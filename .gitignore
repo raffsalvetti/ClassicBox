@@ -1,0 +1,8 @@
+[Tt]humbs.db
+**/*.pyc
+**/*.log
+**/*.srm
+**/*.nes
+**/*.nv
+**/*.zip
+emulator/**
