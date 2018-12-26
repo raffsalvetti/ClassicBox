@@ -6,3 +6,4 @@
 **/*.nv
 **/*.zip
 emulator/**
+rom/**

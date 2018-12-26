@@ -1,7 +1,6 @@
 import SQLiteHelper
 from vec2d import vec2d
 import time
-import platform
 
 class SystemButton:
     def __init__(self):
@@ -24,8 +23,6 @@ class Emulator(SystemButton):
         self.name = None
         self.executable_full_path = None
         self.base_arguments = None
-        self.os = None
-        self.emulator_group_id = None
         self.rom_dir = None
         self.preview_dir = None
         self.console_image_full_path = None
@@ -36,7 +33,7 @@ class Rom(SystemButton):
         self.name = None
         self.binary_name = None
         self.additional_argument = None
-        self.emulator_group = None
+        self.emulator = None
         self.genre = None
         self.year = None
         self.developer = None
@@ -45,7 +42,7 @@ class Rom(SystemButton):
         self.max_players = None
         self.last_play = None
         self.play_count = None
-
+        
 class  LogPlayRom:
     def __init__(self, rom = None, pid = None):
         self.id = None
@@ -71,24 +68,24 @@ class LogPlayRomSQLiteDataAccess:
         if log_play_rom is None:
             return
         sql = "INSERT INTO log_play_rom (rom_id, pid) VALUES (" + str(log_play_rom.rom.id) + ", " + str(log_play_rom.pid) + ")"
-        dbhelper = SQLiteHelper.SQLiteHelper("classicbox.sqlite")
+        dbhelper = SQLiteHelper.SQLiteHelper("data/classicbox.sqlite")
         log_play_rom.id = dbhelper.InsertUpdateDelete(sql, True)
         return log_play_rom
-
+    
     def update_log(self,  log_play_rom = None):
         if log_play_rom is None:
             return
         sql = "UPDATE log_play_rom SET end_time = '" + time.strftime("%Y-%m-%d %H:%M:%S") + "' WHERE id = " + str(log_play_rom.id)
-        dbhelper = SQLiteHelper.SQLiteHelper("classicbox.sqlite")
+        dbhelper = SQLiteHelper.SQLiteHelper("data/classicbox.sqlite")
         return dbhelper.InsertUpdateDelete(sql)
-
+        
 class GenreSQLiteDataAccess:
     def __init__(self):
         pass
-
+    
     def get_all(self):
         sql = "SELECT id, name FROM genre ORDER BY name;"
-        dbhelper = SQLiteHelper.SQLiteHelper("classicbox.sqlite")
+        dbhelper = SQLiteHelper.SQLiteHelper("data/classicbox.sqlite")
         genres = []
         rs = dbhelper.Select(sql)
         for row in rs:
@@ -101,26 +98,10 @@ class GenreSQLiteDataAccess:
 class EmulatorSQLiteDataAccess:
     def __init__(self):
         pass
-
+    
     def get_all(self):
-        sql = """SELECT
-                    e.id,
-                    eg.name,
-                    e.executable_full_path,
-                    e.base_arguments,
-                    e.emulator_group_id,
-                    eg.rom_dir,
-                    eg.preview_dir,
-                    eg.console_image_full_path
-                FROM
-                    emulator e
-                JOIN
-                    emulator_group eg ON eg.id = e.emulator_group_id
-                WHERE
-                    e.os = '{os}'
-                ORDER BY
-                    eg.name;""".format(os=platform.system())
-        dbhelper = SQLiteHelper.SQLiteHelper("classicbox.sqlite")
+        sql = "SELECT id, name, executable_full_path, base_arguments, rom_dir, preview_dir, console_image_full_path FROM emulator ORDER BY name;"
+        dbhelper = SQLiteHelper.SQLiteHelper("data/classicbox.sqlite")
         emulators = []
         rs = dbhelper.Select(sql)
         for row in rs:
@@ -129,7 +110,6 @@ class EmulatorSQLiteDataAccess:
             e.name = row["name"]
             e.executable_full_path = row["executable_full_path"]
             e.base_arguments = row["base_arguments"]
-            e.emulator_group_id = row["emulator_group_id"]
             e.rom_dir = row["rom_dir"]
             e.preview_dir = row["preview_dir"]
             e.console_image_full_path = row["console_image_full_path"]
@@ -139,33 +119,16 @@ class EmulatorSQLiteDataAccess:
 class RomSQLiteDataAccess:
     def __init__(self):
         pass
-
+    
     def get_all(self):
         emulatorda = EmulatorSQLiteDataAccess()
         emulators = emulatorda.get_all()
-
+        
         genreda = GenreSQLiteDataAccess()
         genres = genreda.get_all()
-
-        sql = """SELECT
-                    id,
-                    name,
-                    binary_name,
-                    additional_argument,
-                    emulator_group_id,
-                    genre_id,
-                    year,
-                    developer,
-                    publisher,
-                    install_date,
-                    last_play,
-                    max_players,
-                    play_count
-                FROM
-                    rom
-                ORDER BY
-                    name;"""
-        dbhelper = SQLiteHelper.SQLiteHelper(dbfile="classicbox.sqlite")
+        
+        sql = "SELECT id, name, binary_name, additional_argument, emulator_id, genre_id, year, developer, publisher, install_date, last_play, max_players, play_count FROM rom ORDER BY name;"
+        dbhelper = SQLiteHelper.SQLiteHelper(dbfile="data/classicbox.sqlite")
         roms = []
         rs = dbhelper.Select(sql)
         for row in rs:
@@ -175,8 +138,8 @@ class RomSQLiteDataAccess:
             r.binary_name = row["binary_name"]
             r.additional_argument = row["additional_argument"]
             for e in emulators:
-                if e.id == row["emulator_group_id"]:
-                    r.emulator_group = e
+                if e.id == row["emulator_id"]:
+                    r.emulator = e
                     break
             for g in genres:
                 if g.id == row["genre_id"]:
@@ -191,10 +154,11 @@ class RomSQLiteDataAccess:
             r.play_count = row["play_count"]
             roms.append(r)
         return roms
-
+    
     def update_play_time(self, rom):
         rom.last_play = time.strftime("%Y-%m-%d %H:%M:%S")
         rom.play_count = rom.play_count + 1
         sql = "UPDATE rom SET last_play = '" + rom.last_play + "', play_count = " + str(rom.play_count) + " WHERE id = " + str(rom.id)
-        dbhelper = SQLiteHelper.SQLiteHelper(dbfile="classicbox.sqlite")
+        dbhelper = SQLiteHelper.SQLiteHelper(dbfile="data/classicbox.sqlite")
         return dbhelper.InsertUpdateDelete(sql)
+    
