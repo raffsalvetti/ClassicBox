@@ -2,6 +2,8 @@ import urllib2
 from HTMLParser import HTMLParser
 import MySQLdb as mysql
 
+# verificar site http://adb.arcadeitalia.net/dettaglio_mame.php?game_name=cottonbm&search_id=2
+
 class Game:
     def __init__(self):
         self.name = ""

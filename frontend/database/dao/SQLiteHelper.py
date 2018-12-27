@@ -1,19 +1,21 @@
 import sqlite3 as sqlite
 
-def dict_factory(cursor, row):
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
+# verificar uso do ORM SQLAlchemy
 
-class SQLiteHelper:
+class SQLiteHelper(object):
     def __init__(self, dbfile):
         self.dbfile = dbfile
         self.connection = None
 
+    def __dict_factory(self, cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return d
+
     def connect(self):
         self.connection = sqlite.connect(self.dbfile)
-        self.connection.row_factory = dict_factory
+        self.connection.row_factory = self.__dict_factory
     
     def close(self):
         if self.connection:
@@ -23,10 +25,10 @@ class SQLiteHelper:
         return self.connection
     
     def Select(self, sql):
-        data = ""
+        data = None
         try:
             con = sqlite.connect(self.dbfile)
-            con.row_factory = dict_factory
+            con.row_factory = self.__dict_factory
             cur = con.cursor()
             #cur = self.connection.cursor()
             cur.execute(sql)
@@ -42,7 +44,7 @@ class SQLiteHelper:
         last_row = 0
         try:
             con = sqlite.connect(self.dbfile)
-            con.row_factory = dict_factory
+            con.row_factory = self.__dict_factory
             cur = con.cursor()
             #cur = self.connection.cursor()
             cur.execute(sql)

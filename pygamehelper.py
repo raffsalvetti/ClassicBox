@@ -27,6 +27,7 @@ class PygameHelper:
         self.screen.fill(fill)
         pygame.display.flip()
         self.running = False
+        self.readyToQuit = False
         self.clock = pygame.time.Clock() #to track FPS
         self.size = size
         self.fps= 0
@@ -82,6 +83,9 @@ class PygameHelper:
             self.draw()
             pygame.display.flip()
             self.clock.tick(self.fps)
+            self.running = not self.readyToQuit
+        else:
+            pygame.quit()
             
     def update(self):
         pass
@@ -109,4 +113,7 @@ class PygameHelper:
 
     def joyButtonDown(self, joy, button):
         pass
+
+    def quit(self):
+        self.readyToQuit = True
         

@@ -1,24 +1,34 @@
 from pygamehelper import PygameHelper
-from MenuObjects import Emulator, \
-                        Rom, \
-                        SystemButton, \
-                        EmulatorSQLiteDataAccess, \
-                        RomSQLiteDataAccess, \
-                        Config, LogPlayRomSQLiteDataAccess, LogPlayRom
+
+from frontend.components.Config import Config
+from frontend.components.System import SystemButton
+from frontend.database.model.MyModels import Emulator, Rom, LogPlayRom
+from frontend.database.dao.MyDataAccess import EmulatorSQLiteDataAccess, RomSQLiteDataAccess, LogPlayRomSQLiteDataAccess
+
 import sys
 from vec2d import vec2d
 import pygame
 from subprocess import Popen
 import time
-import logging
+
+class CurrentState(object):
+    pass
 
 class Starter(PygameHelper):
-    def __init__(self):
-        logging.basicConfig(filename='log/menu.log', format="%(asctime)s - %(levelname)s - %(funcName)s --> %(message)s", filemode="w", level=logging.DEBUG)
-        self.config = Config()
-        PygameHelper.__init__(self, size=(self.config.resolution[0], self.config.resolution[1]), fill=((0,0,0)))
-        self.j0_START = 9
-        self.j0_SELECT = 8
+    def __init__(self, config = None, logSystem = None):
+        if config is None:
+            print("Configuracao nao informada")
+            sys.exit()
+        if logSystem is None:
+            print("Sistema de log nao informado")
+            sys.exit()
+        
+        self.config = config
+        self.log = logSystem
+
+        PygameHelper.__init__(self, size=self.config.resolution, fill=((0,0,0)))
+        self.j0_START = config.button_start_code
+        self.j0_SELECT = config.button_select_code
         
         self.rom_list_font = None
         self.generic_font = None
@@ -26,7 +36,7 @@ class Starter(PygameHelper):
         self.select_sound_cursor = None
         self.select_sound_validate = None
         
-        self.selection_color = (255, 0, 0)
+        self.selection_color = config.selection_color
         self.selection_color_fade_order = False
         
         self.emulators = []
@@ -55,51 +65,51 @@ class Starter(PygameHelper):
         self.all_clickable_list = None
         
         try:
-            logging.info("selecionando valores iniciais para emulador e roms")
+            self.log.info("selecionando valores iniciais para emulador e roms")
             if len(self.emulators) > 0:
                 self.current_selected_emulator = self.emulators[0]
                 self.current_page_itens = self.get_itens_by_page(self.find_roms_by_emulator_code(), 6, self.current_page)
                 self.current_selected_item = self.current_selected_emulator
                 self.all_clickable_list = [self.emulators, self.current_page_itens, self.system_buttons]
         except Exception, e:
-            logging.error("nao foi possivel selecionar valores iniciais para o emulador e as roms do emulador: %s", e)
+            self.log.error("nao foi possivel selecionar valores iniciais para o emulador e as roms do emulador: %s", e)
         
     def load_components(self):
-        logging.info("carregando componentes basicos...")
+        self.log.info("carregando componentes basicos...")
         
         try:
-            logging.debug("carregando imagens basicas...")
+            self.log.debug("carregando imagens basicas...")
             self.background_image = pygame.image.load("images/Background" + self.config.get_st_res() + ".png")
             self.rom_list_select_image = pygame.image.load("images/RomListSelect" + self.config.get_st_res() + ".png")
-            self.rom_list_font = pygame.font.Font("fonts/" + self.config.fontName + ".ttf", 25)
-            self.generic_font = pygame.font.Font("fonts/" + self.config.fontName + ".ttf", 10)
+            self.rom_list_font = pygame.font.Font("fonts/" + self.config.font, 25)
+            self.generic_font = pygame.font.Font("fonts/" + self.config.font, 10)
             self.select_sound_cursor = pygame.mixer.Sound("sounds/menu-change-selection.wav")
             self.select_sound_validate = pygame.mixer.Sound("sounds/menu-validate.wav")
         except Exception, e:
-            logging.fatal("nao foi possivel carregar imagens basicas: %s", e)
-            pygame.quit()
+            self.log.fatal("nao foi possivel carregar objetos basicos: %s", e)
+            self.quit()
 
         try:
-            logging.debug("carregando emuladores...")
+            self.log.debug("carregando emuladores...")
             #carga de icones dos emuladores
             for i in range(0, len(self.emulators)):
                 self.emulators[i].icon = pygame.image.load("images/" + self.emulators[i].console_image_full_path + self.config.get_st_res() + ".png")
                 self.emulators[i].size = vec2d(self.emulators[i].icon.get_size())
                 self.emulators[i].location = vec2d(i * self.emulators[i].size.x, 0)
         except Exception, e:
-            logging.fatal("nao foi possivel carregar emuladores: %s", e)
-            pygame.quit()
+            self.log.fatal("nao foi possivel carregar emuladores: %s", e)
+            self.quit()
         
         try:
             for i in range(0, len(self.roms)):
                 self.roms[i].icon = self.rom_list_select_image
                 self.roms[i].size = vec2d(self.roms[i].icon.get_size())
         except Exception, e:
-            logging.fatal("nao foi possivel carregar roms: %s", e)
-            pygame.quit()
+            self.log.fatal("nao foi possivel carregar roms: %s", e)
+            self.quit()
             
         try:
-            logging.debug("carregando botao de configuracao...")
+            self.log.debug("carregando botao de configuracao...")
             #carga do botao configuracao
             b = SystemButton()
             b.icon = pygame.image.load("images/controlPannel" + self.config.get_st_res() + ".png")
@@ -108,7 +118,7 @@ class Starter(PygameHelper):
             b.value = "config"
             self.system_buttons.append(b)
             
-            logging.debug("carregando botao sair...")
+            self.log.debug("carregando botao sair...")
             #carga do botao sair
             b = SystemButton()
             b.icon = pygame.image.load("images/exit" + self.config.get_st_res() + ".png")
@@ -117,7 +127,7 @@ class Starter(PygameHelper):
             b.value = "quit"
             self.system_buttons.append(b)
             
-            logging.debug("carregando botao pageup...")
+            self.log.debug("carregando botao pageup...")
             #carga do botao pagina anterior
             b = SystemButton()
             b.icon = pygame.image.load("images/ScrollArrowUp" + self.config.get_st_res() + ".png")
@@ -126,7 +136,7 @@ class Starter(PygameHelper):
             b.value = "pageUp"
             self.system_buttons.append(b)
             
-            logging.debug("carregando botao pagedown...")
+            self.log.debug("carregando botao pagedown...")
             #carga do botao pagina posterior
             b = SystemButton()
             b.icon = pygame.image.load("images/ScrollArrowDown" + self.config.get_st_res() + ".png")
@@ -135,7 +145,7 @@ class Starter(PygameHelper):
             b.value = "pageDown"
             self.system_buttons.append(b)
             
-            logging.debug("carregando botao orderbyname...")
+            self.log.debug("carregando botao orderbyname...")
             b = SystemButton()
             b.icon = pygame.image.load("images/romName" + self.config.get_st_res() + ".png")
             b.size = vec2d(b.icon.get_size())
@@ -143,7 +153,7 @@ class Starter(PygameHelper):
             b.value = "orderByName"
             self.system_buttons.append(b)
     
-            logging.debug("carregando botao orderbycounter...")
+            self.log.debug("carregando botao orderbycounter...")
             b = SystemButton()
             b.icon = pygame.image.load("images/playCount" + self.config.get_st_res() + ".png")
             b.size = vec2d(b.icon.get_size())
@@ -152,33 +162,32 @@ class Starter(PygameHelper):
             self.system_buttons.append(b)
             
         except Exception, e:
-            logging.fatal("nao foi possivel carregar botoes de controle: %s", e)
-            pygame.quit()
-
+            self.log.fatal("nao foi possivel carregar botoes de controle: %s", e)
+            self.quit()
         
     def load_emulators(self):
         try:
-            logging.debug("recuperando emuladores da base...")
+            self.log.debug("recuperando emuladores da base...")
             emulatorsDA = EmulatorSQLiteDataAccess()
             self.emulators = emulatorsDA.get_all()
         except Exception, e:
-            logging.fatal("nao foi possivel recuperar emuladores da base: %s", e)
+            self.log.fatal("nao foi possivel recuperar emuladores da base: %s", e)
             sys.exit(1)
         
     def load_roms(self):
         try:
-            logging.debug("recuperando roms da base...")
+            self.log.debug("recuperando roms da base...")
             romsDA = RomSQLiteDataAccess()
             self.roms = romsDA.get_all()
         except Exception, e:
-            logging.fatal("nao foi possivel recuperar roms da base: %s", e)
-            pygame.quit()
+            self.log.fatal("nao foi possivel recuperar roms da base: %s", e)
+            self.quit()
 
     def update(self): 
         try:
             if self.current_selected_emulator_process.poll() is not None:
                 self.current_selected_emulator_process = None
-                logging.info("o emulador foi finalizado pelo jogador")
+                self.log.info("o emulador foi finalizado pelo jogador")
                 
                 try:
                     LogPlayRomSQLiteDataAccess().update_log(self.current_play_log_rom)
@@ -211,21 +220,21 @@ class Starter(PygameHelper):
     def mouseUp(self, button, pos):
 
         if pos is not None and button is not None:
-            logging.info("clique de mouse com o botao %s na posicao %s", button, pos)
+            self.log.info("clique de mouse com o botao %s na posicao %s", button, pos)
             self.current_selected_item = self.select_item(pos)
             if(button != 1):
-                logging.debug("era esperado um click com o botao 1, saindo da funcao...")
+                self.log.debug("era esperado um click com o botao 1, saindo da funcao...")
                 return
         
         if isinstance(self.current_selected_item, Emulator):
-            logging.info("o objeto selecionado eh o emulador %s!", self.current_selected_item.name)
+            self.log.info("o objeto selecionado eh o emulador %s!", self.current_selected_item.name)
             self.current_selected_emulator = self.current_selected_item
             self.current_page = 0
             self.current_page_itens = self.get_itens_by_page(self.find_roms_by_emulator_code(), 6, self.current_page)
             self.all_clickable_list[1] = self.current_page_itens
                 
         elif isinstance(self.current_selected_item, Rom):
-            logging.info("o objeto selecionado eh a rom %s!", self.current_selected_item.name)
+            self.log.info("o objeto selecionado eh a rom %s!", self.current_selected_item.name)
             self.current_selected_rom = self.current_selected_item
             self.select_sound_validate.play()
 
@@ -234,27 +243,27 @@ class Starter(PygameHelper):
                 args = args.replace("%ROM_DIR%", self.current_selected_emulator.rom_dir)
                 args = args.replace("%ROM%", self.current_selected_rom.binary_name)
                 args = args.replace("%ROM_FULL_PATH%", "\"" + self.current_selected_emulator.rom_dir + self.current_selected_rom.binary_name + "\"")
-                logging.info("executando: %s", self.current_selected_emulator.executable_full_path + args)
+                self.log.info("executando: %s", self.current_selected_emulator.executable_full_path + args)
                 self.current_selected_emulator_process = Popen(self.current_selected_emulator.executable_full_path + args)
             except Exception, e:
-                logging.error("erro iniciando emulador: %s", e)
+                self.log.error("erro iniciando emulador: %s", e)
                 self.current_selected_emulator_process = None
                 
             try:
-                logging.info("atualizando contador e data de ultimo jogo da rom %s", self.current_selected_rom.name)
+                self.log.info("atualizando contador e data de ultimo jogo da rom %s", self.current_selected_rom.name)
                 RomSQLiteDataAccess().update_play_time(self.current_selected_rom)
                 self.current_play_log_rom = LogPlayRomSQLiteDataAccess().add_log(LogPlayRom(self.current_selected_rom, self.current_selected_emulator_process.pid))
             except Exception, e:
-                logging.error("erro atualizando dados da rom %s: %s", self.current_selected_rom.name, e)
+                self.log.error("erro atualizando dados da rom %s: %s", self.current_selected_rom.name, e)
             
                     
         elif isinstance(self.current_selected_item, SystemButton):
-            logging.info("o objeto selecionado eh um botao de controle!")
+            self.log.info("o objeto selecionado eh um botao de controle!")
             
             if self.current_selected_item.value == "quit":
                 print "saindo"
-                #pygame.quit()
-                sys.exit()
+                self.quit()
+                #sys.exit()
                 
                 #saindo
             
