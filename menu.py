@@ -532,6 +532,3 @@ class Starter(PygameHelper):
                 return llist[current_page]
             except:
                 return list()
-
-s = Starter()
-s.mainLoop(40)                
